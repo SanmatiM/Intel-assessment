@@ -22,7 +22,7 @@
             <tbody>
                 <template v-for="(data, status, index) in productDataBystatus.data">
                     <!-- status -->
-                    <tr>
+                    <tr :class="getStatusClass(status)">
                         <td class="width1" :rowspan="calstatusRowspan(data)">
                             {{ status }}
                         </td>
@@ -30,13 +30,13 @@
 
                     <template v-for="cores in Object.keys(data)">
                         <!-- cores -->
-                        <tr>
+                        <tr :class="getStatusClass(status)">
                             <td class="width1" :rowspan="Object.keys(data[cores]).length + 1">
                                 {{ cores }}
                             </td>
                         </tr>
 
-                        <tr v-for="(v, k) in data[cores]">
+                        <tr v-for="(v, k) in data[cores]" :class="getStatusClass(v.Status)">
                             <!-- product -->
                             <td class="productColumn">{{ v.Product }}</td>
 
@@ -78,8 +78,6 @@ export default {
     },
     computed: {
         wwData() {
-            // You can keep your existing logic here to compute wwData
-            // For example:
             return `${this.getWWFromDate().year}WW${this.getWWFromDate().workweek}.${this.getWWFromDate().numofday}`;
         },
     },
@@ -101,6 +99,15 @@ export default {
                 workweek: Math.ceil(days / 7),
                 numofday: currentDate.getDay(),
             };
+        },
+        getStatusClass(status) {
+            const statusClassMap = {
+                Announced: 'status-announced',
+                Discontinued: 'status-discontinued',
+                Launched: 'status-launched',
+                'Launched (with IPU)': 'status-launched-with-ipu',
+            };
+            return statusClassMap[status];
         }
     }
 };
@@ -235,35 +242,30 @@ th {
     border: 1px solid black;
 }
 
-.reference {
-    width: 1%;
-    background-color: #00b0f0;
+.status-announced {
+    background-color: #db7d7d;
+    /* Red for Announced */
 }
 
-.released {
-    width: 1%;
-    background-color: #7fff00;
+.status-discontinued {
+    background-color: #e9ee6f;
+    /* Dark Red for Discontinued */
 }
 
-.partial {
-    width: 1%;
-    background-color: #ffa500;
+.status-launched {
+    background-color: #8cf38c;
+    /* Green for Launched */
 }
 
-.tentative {
-    width: 1%;
-    background-color: #dcdcdc;
+.status-launched-with-ipu {
+    background-color: #008000;
+    /* Dark Green for Launched (with IPU) */
 }
 
-.planned {
-    width: 1%;
-    background-color: #82ffac;
-}
-
-.productColumn {
+/* .productColumn {
     width: 1%;
     background-color: white;
-}
+} */
 
 .width1 {
     width: 1%;
