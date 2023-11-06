@@ -255,38 +255,12 @@ export default {
             return sum;
         };
 
-        
-        const selectedSort = ref('default');
-
-// Add a computed property to sort the data based on the selected option
-const sortedData = computed(() => {
-  const dataCopy = [...dataRef.value]; // Clone the data to avoid modifying the original
-  const sortKey = selectedSort.value;
-
-  if (sortKey === 'threads') {
-    // Sort by Threads
-    dataCopy.sort((a, b) => a.Threads - b.Threads);
-  } else if (sortKey === 'base_freq') {
-    // Sort by Base Frequency
-    dataCopy.sort((a, b) => a.Base_Freq - b.Base_Freq);
-  } else if (sortKey === 'max_turbo_freq') {
-    // Sort by Max Turbo Frequency
-    dataCopy.sort((a, b) => a.Max_Turbo_Freq - b.Max_Turbo_Freq);
-  } else if (sortKey === 'lithography') {
-    // Sort by Lithography
-    dataCopy.sort((a, b) => a.Lithography.localeCompare(b.Lithography));
-  }
-
-  return dataCopy;
-});
-
         return {
             hidestatus, allCheckBox, UIData,
             wwInfo, allCheck, dataRef, perPage,
             wwData, hideShowALLstatus, paginationMeta,
             setCurrentPage, calstatusRowspan, currentPage,
-            searchKeywords, selectedSort,
-      sortedData
+            searchKeywords
         }
     },
 };
