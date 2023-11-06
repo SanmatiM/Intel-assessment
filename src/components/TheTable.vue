@@ -1,38 +1,205 @@
 <template>
     <div>
-        <HideBar :productDataBystatus="productDataBystatus" v-bind:hidestatus="hidestatus" v-on:update:hidestatus="hidestatus = $event" />
-        <MainTable :productDataBystatus="productDataBystatus" />
+        <!-- Hide By status Bar -->
+        <nav class="navbar navbar-expand-lg navbar-light bg-light">
+            <div class="container">
+                <a class="navbar-brand mx-auto">Intel Dashboard SLA</a>
+                <!-- Collapsible content -->
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <div class="row">
+                        <!-- HideBarVue Component -->
+                        <div class="col-md-8">
+                            <HideBarVue :productDataBystatus="paginationMeta.statuses" v-bind:hidestatus="hidestatus"
+                                v-on:update:hidestatus="hidestatus = $event" />
+                        </div>
+
+                        <!-- Search Input Form -->
+                        <div class="col-md-4">
+                            <form class="form-inline ml-auto">
+                                <input type="search" placeholder="Search" aria-label="Search" v-model="searchKeywords"
+                                    class="form-control mr-sm-2" />
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Table Design -->
+        <table>
+            <thead>
+
+                <tr>
+                    <th colspan="3">{{ wwData }}</th>
+                    <th colspan="8">Product Info</th>
+                </tr>
+                <tr>
+                    <th>Status</th>
+                    <th>Cores</th>
+                    <th class="width1">Product</th>
+                    <th class="width1">Lithography</th>
+                    <th>Threads</th>
+                    <th>Base Freq</th>
+                    <th>Max Turbo Freq</th>
+                </tr>
+            </thead>
+            <tbody>
+
+
+                <template v-for="(data, status, index) in paginationMeta.data">
+                    <!-- status -->
+                    <tr :class="getStatusClass(status)">
+                        <td class="width1" :rowspan="calstatusRowspan(data)">
+                            {{ status }}
+                        </td>
+                    </tr>
+
+                    <template v-for="cores in Object.keys(data)">
+                        <!-- cores -->
+                        <tr :class="getStatusClass(status)">
+                            <td class="width1" :rowspan="Object.keys(data[cores]).length + 1">
+                                {{ cores }}
+                            </td>
+                        </tr>
+
+                        <tr v-for="(v, k) in data[cores]" :class="getStatusClass(v.Status)">
+                            <!-- product -->
+                            <td class="productColumn">{{ v.Product }}</td>
+
+                            <!-- Lithography -->
+                            <td>{{ v.Lithography }}</td>
+
+                            <!-- Threads -->
+                            <td>
+                                <div class="innerCells">
+                                    <input :value="v.Threads" :disabled="true" type="text" />
+                                </div>
+                            </td>
+
+                            <!-- Base Freq -->
+                            <td>
+                                <div class="innerCells">
+                                    <input :value="v.Base_Freq" :disabled="true" type="text" />
+                                </div>
+                            </td>
+
+                            <!-- Max Turbo Freq -->
+                            <td>
+                                <div class="innerCells">
+                                    <input :value="v.Max_Turbo_Freq" type="text" :disabled="true" />
+                                </div>
+                            </td>
+                        </tr>
+                    </template>
+                </template>
+            </tbody>
+
+        </table>
+        <div class="row">
+            <div class="col-12">
+                <Pagination :activePage="currentPage" :data="paginationMeta.pages" :callback="setCurrentPage" />
+            </div>
+        </div>
+        <!-- End of Table Design -->
     </div>
 </template>
   
+  
 <script>
-import { ref, computed } from 'vue';
-import HideBar from './HideBar.vue'
-import MainTable from './MainTable.vue';
-import data from './../assets/data.json';
+import { ref, computed } from "vue";
 
+import data from "../assets/data.json";
+import HideBarVue from "./HideBar.vue";
+import Pagination from "./Pagination.vue";
 export default {
     components: {
-        HideBar,
-        MainTable,
+        HideBarVue,
+        Pagination
+    },
+    methods: {
+        getStatusClass(status) {
+            const statusClassMap = {
+                Announced: 'status-announced',
+                Discontinued: 'status-discontinued',
+                Launched: 'status-launched',
+                'Launched (with IPU)': 'status-launched-with-ipu',
+            };
+            return statusClassMap[status];
+        }
     },
     setup() {
-        const UIData = ref(data);
-        const hidestatus = ref([]);
 
-        const productDataBystatus = computed(() => {
+        const now = new Date();
+
+        let dataRef = data
+        let UIData = data;
+        let allCheck = false;
+        let wwInfo = {
+            year: now.getFullYear(),
+            workweek: Math.ceil(Math.floor((now - new Date(now.getFullYear(), 0, 1)) / (24 * 60 * 60 * 1000)) / 7),
+            numofday: now.getDay(),
+        };
+
+        /***** Reactive properties*****/
+        let perPage = ref(50)
+        let currentPage = ref(1)
+        let hidestatus = ref([]);
+        let allCheckBox = ref([]);
+        const searchKeywords = ref("")
+
+        /***** COMPUTED PROPERTIES *****/
+        const wwData = computed(() => `${wwInfo.year}WW${wwInfo.workweek}.${wwInfo.numofday}`);
+
+        let paginationMeta = computed(() => {
+
+            let stats = {};
             let tmp = {};
-            let data = UIData.value;
+            let data_list = [];
+            let data = UIData;
             let statusSet = new Set();
-            console.log(typeof data);
-            data.forEach((element) => {
-                let status = element.Status;
-                let cores = element.Cores;
 
+            /*** Take statuses & search by input */
+            data.forEach((element) => {
+
+                let status = element.Status;
                 // push status to set
                 statusSet.add(status);
 
                 if (hidestatus.value.includes(status)) return; // Hide by status
+
+                if (searchKeywords !== "") {
+
+                    /***** Filterable columns ****/
+                    let searchableColumns = [
+                        "Product",
+                        "Status",
+                        "Cores",
+                        "Threads",
+                        "Max_Turbo_Freq",
+                        "Base_Freq",
+                        "Cache(MB)"
+                    ];
+
+                    if (searchableColumns.some((key) => { const value = element[key] ? element[key].toString().toLowerCase() : ''; return value.toString().toLowerCase().includes(String(searchKeywords.value).toLowerCase()); })) {
+
+                        data_list.push(element);
+
+                        if (stats[element["Status"]]) { stats[element["Status"]]++; }
+                        else { stats[element["Status"]] = 1; }
+                    }
+                } else {
+
+                    data_list.push(element);
+                    if (stats[element["Status"]]) { stats[element["Status"]]++; }
+                    else { stats[element["Status"]] = 1; }
+                }
+            });
+
+            //currentPage.value = 1;
+            data_list.slice(currentPage.value * perPage.value - perPage.value, currentPage.value * perPage.value).forEach((element) => {
+                let status = element.Status;
+                let cores = element.Cores;
+
                 if (!tmp[status]) tmp[status] = {};
                 if (!tmp[status][cores]) tmp[status][cores] = [];
 
@@ -45,26 +212,295 @@ export default {
             statusSet = new Set(sortedStringsArray);
 
             return {
-                status: [...statusSet],
+                totalPages: Math.ceil(data_list.length / perPage.value),
                 data: tmp,
-            };
+                pages: Array.from({ length: Math.ceil(data_list.length / perPage.value) }, (_, i) => i + 1),
+                statuses: [...statusSet],
+                stats: Object.entries(stats).map(([name, y]) => ({ name, y }))
+            }
         });
 
-        function toggleAllStatus(checked) {
-            if (checked) {
-                hidestatus.value = productDataBystatus.value.status;
-            } else {
+        /***** METHODS *****/
+        const setCurrentPage = page => currentPage.value = page;
+
+        const hideShowALLstatus = () => {
+
+            if (!document.querySelector(".styled").checked) {
+
                 hidestatus.value = [];
+                allCheckBox.value = [];
+            } else {
+
+                hidestatus.value = paginationMeta.value.statuses;
+                allCheckBox.value = paginationMeta.value.statuses;
             }
-        }
+
+            allCheck = !allCheck.value;
+            if (!allCheck) {
+
+                hidestatus.value = [];
+                allCheckBox.value = [];
+            }
+        };
+
+        const calstatusRowspan = (data) => {
+
+            let sum = Object.keys(data).length + 1;
+            for (const cores in data) {
+                sum += Object.keys(data[cores]).length;
+            }
+
+            return sum;
+        };
+
+        // const search = () => {
+
+        //   console.log("Search", searchKeywords)
+        // }
 
         return {
-            UIData,
-            hidestatus,
-            productDataBystatus,
-            toggleAllStatus,
-        };
+            hidestatus, allCheckBox, UIData,
+            wwInfo, allCheck, dataRef, perPage,
+            wwData, hideShowALLstatus, paginationMeta,
+            setCurrentPage, calstatusRowspan, currentPage,
+            searchKeywords
+        }
     },
 };
 </script>
   
+  
+<style scoped>
+.fas.fa-times {
+    display: none;
+}
+
+.fas.fa-times.comment {
+    display: block;
+}
+
+.overWrittenCells:hover .fas {
+    display: block;
+}
+
+.innerCells {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+}
+
+.innerCells.comment {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+}
+
+table {
+    width: 100%;
+    white-space: nowrap !important;
+}
+
+table td {
+    position: relative;
+}
+
+i {
+    cursor: pointer;
+}
+
+.legendColorBox {
+    margin: 0.4%;
+    float: left;
+    height: 20px;
+    width: 30px;
+    border: 1px solid grey;
+    margin-right: 4%;
+}
+
+.inputBox {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    bottom: 0;
+    text-align: center;
+    border: 0;
+    text-transform: uppercase !important;
+}
+
+.inputBoxOverWritten {
+    top: 0;
+    right: 0;
+    left: 0;
+    bottom: 0;
+    text-align: center;
+    border: 0;
+    width: 80px;
+    text-transform: uppercase !important;
+    background: none !important;
+}
+
+.overWrittenCells {
+    border: 2px solid rgb(194, 1, 1);
+}
+
+.overWrittenCells input {
+    outline: 0;
+}
+
+input::placeholder {
+    color: black;
+}
+
+input:focus::-webkit-input-placeholder {
+    color: grey;
+}
+
+input[disabled] {
+    cursor: text;
+    background-color: inherit;
+    color: black;
+}
+
+.legend-labels {
+    white-space: nowrap !important;
+    padding: 0%;
+    display: flex;
+    list-style-type: none;
+    margin-bottom: 5px;
+}
+
+.legend-labels li {
+    font-size: small;
+    margin-right: 2%;
+}
+
+select {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    bottom: 0;
+    text-align: center;
+    border: 0;
+}
+
+table tr td:not(.skip),
+table tr th {
+    text-align: center;
+}
+
+td,
+th {
+    padding: 2px !important;
+    width: 100px;
+    border: 1px solid black;
+}
+
+.status-announced {
+    background-color: #db7d7d;
+    /* Red for Announced */
+}
+
+.status-discontinued {
+    background-color: #e9ee6f;
+    /* Dark Red for Discontinued */
+}
+
+.status-launched {
+    background-color: #8cf38c;
+    /* Green for Launched */
+}
+
+.status-launched-with-ipu {
+    background-color: #008000;
+    /* Dark Green for Launched (with IPU) */
+}
+
+.planned {
+    width: 1%;
+    background-color: #82ffac;
+}
+
+.hideBar {
+    list-style: none;
+    display: flex;
+}
+
+/* .productColumn {
+    width: 1%;
+    background-color: white;
+  }
+   */
+.checkbox {
+    list-style: none;
+    display: flex;
+}
+
+.checkbox label {
+    margin-left: 10px;
+}
+
+.redActual {
+    width: 1%;
+    color: red;
+    background-color: #dcdcdc;
+}
+
+/* .width1 {
+    width: 1%;
+    /* white-space: nowrap !important; 
+  } */
+/* Style the navbar */
+.navbar {
+    background-color: #007BFF;
+    color: #fff;
+}
+
+/* Style the brand/logo */
+.navbar-brand {
+  font-size: 24px;
+  font-weight: bold;
+  margin: 0 auto; /* Center the brand */
+  display: table; /* Center the brand within the navbar */
+}
+/* Style the search input form */
+.form-inline {
+    display: flex;
+    align-items: center;
+    margin-top: 10px;
+}
+
+.form-control {
+    width: 250px;
+    border: 1px solid #fff;
+    border-radius: 20px;
+    padding: 8px;
+    margin-right: 10px;
+    background-color: transparent;
+    color: #fff;
+}
+
+.form-control::placeholder {
+    color: #fff;
+}
+
+
+/* Style the HideBarVue component */
+.HideBarVue {
+    background-color: #f8f9fa;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 10px;
+    margin-right: 10px;
+}
+
+/* HideBarVue component content (adjust as needed) */
+.HideBarVue .content {
+    font-size: 16px;
+    color: #333;
+}
+</style>

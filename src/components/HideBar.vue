@@ -4,12 +4,12 @@
         <label class="hideLabel"> Hide: </label>
         <div class="checkbox">
 
-            <input :id="productDataBystatus.status" type="checkbox" class="styled" :value="productDataBystatus.status"
+            <input :id="productDataBystatus" type="checkbox" class="styled" :value="productDataBystatus"
                 @click="hideShowALLstatus" :checked="hidestatus.includes(productDataBystatus.status)" />
             <label :for="productDataBystatus.status">All statuses</label>
 
             <!-- Dynamic status -->
-            <div v-for="status in productDataBystatus.status" :key="status">
+            <div v-for="status in productDataBystatus" :key="status">
                 <input :id="status" type="checkbox" class="styled" :value="status" @click="toggleStatus(status)"
                     :checked="hidestatus.includes(status)" />
                 <label :for="status">{{ status }}</label>
@@ -27,12 +27,12 @@ export default {
     },
     methods: {
         hideShowALLstatus() {
-            if (this.hidestatus.length === this.productDataBystatus.status.length) {
+            if (this.hidestatus.length === this.productDataBystatus.length) {
                 // All statuses are currently hidden, so unhide them all
                 this.$emit('update:hidestatus', []);
             } else {
                 // Not all statuses are hidden, so hide them all
-                this.$emit('update:hidestatus', this.productDataBystatus.status.slice());
+                this.$emit('update:hidestatus', this.productDataBystatus.slice());
             }
         },
         toggleStatus(status) {
@@ -72,3 +72,4 @@ export default {
 }
 
 </style>
+
